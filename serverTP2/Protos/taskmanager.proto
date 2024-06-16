@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+option csharp_namespace = "TaskManager";
+
+service TaskService {
+    rpc CreateTask (TaskRequest) returns (TaskResponse);
+    rpc UpdateTask (TaskRequest) returns (TaskResponse);
+    rpc ListServices (Empty) returns (ServiceList);
+    rpc AllocateTask (ClientRequest) returns (TaskResponse);
+    rpc CompleteTask (ClientRequest) returns (TaskResponse);
+    rpc SubscribeService (ClientRequest) returns (ServiceResponse);
+    rpc UnsubscribeService (ClientRequest) returns (ServiceResponse);
+}
+
+message Empty {}
+
+message TaskRequest {
+    string admin_id = 1;
+    string service_id = 2;
+    string task_id = 3;
+    string task_description = 4;
+}
+
+message TaskResponse {
+    string status = 1;
+}
+
+message ClientRequest {
+    string client_id = 1;
+    string service_id = 2;
+    string task_description = 3;
+}
+
+message ServiceResponse {
+    string status = 1;
+}
+
+message ServiceList {
+    repeated string services = 1;
+}

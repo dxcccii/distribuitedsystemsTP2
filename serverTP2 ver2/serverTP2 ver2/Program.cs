@@ -1,4 +1,4 @@
-Ôªøusing System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,12 +10,12 @@ using System.Threading.Tasks;
 using Grpc.Core;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using TaskManager;
+using taskmanager; // Ensure this namespace matches the generated gRPC code
 
 class Servidor
 {
-    public static Dictionary<string, string> serviceDict = new Dictionary<string, string>();
-    public static Dictionary<string, List<string>> taskDict = new Dictionary<string, List<string>>();
+    private static Dictionary<string, string> serviceDict = new Dictionary<string, string>();
+    private static Dictionary<string, List<string>> taskDict = new Dictionary<string, List<string>>();
     private static Mutex mutex = new Mutex();
     private static IConnection rabbitConnection;
     private static IModel rabbitChannel;
@@ -34,7 +34,7 @@ class Servidor
         {
             servidor = new TcpListener(IPAddress.Any, 1234);
             servidor.Start();
-            Console.WriteLine("Servidor iniciado. Aguardando conex√µes...");
+            Console.WriteLine("Servidor iniciado. Aguardando conexıes...");
 
             while (true)
             {
@@ -59,16 +59,16 @@ class Servidor
     private static async Task StartGrpcServer()
     {
         const int Port = 50051;
-        Grpc.Core.Server server = new Grpc.Core.Server
+        Server server = new Server
         {
-            Services = { TaskService.BindService(new TaskServiceImpl()) },
+            Services = { TaskManagerService.BindService(new TaskManagerServiceImpl()) }, // Replace with your generated service
             Ports = { new ServerPort("localhost", Port, ServerCredentials.Insecure) }
         };
 
         server.Start();
         Console.WriteLine($"gRPC server started on port {Port}");
 
-        await server.ShutdownTask;
+        await server.ShutdownAsync();
     }
 
     private static void InitRabbitMQ()
@@ -93,16 +93,6 @@ class Servidor
         rabbitChannel.BasicConsume(queue: rabbitQueueName,
                                    autoAck: true,
                                    consumer: consumer);
-    }
-
-    public static void PublishNotification(string message)
-    {
-        var body = Encoding.UTF8.GetBytes(message);
-        rabbitChannel.BasicPublish(exchange: "",
-                                   routingKey: rabbitQueueName,
-                                   basicProperties: null,
-                                   body: body);
-        Console.WriteLine($"Published notification: {message}");
     }
 
     private static void HandleClient(object obj)
@@ -176,7 +166,7 @@ class Servidor
             }
             else
             {
-                return "500 ERROR: Comando n√£o reconhecido";
+                return "500 ERROR: Comando n„o reconhecido";
             }
         }
         catch (Exception ex)
@@ -222,11 +212,11 @@ class Servidor
                         serviceDict[clientId] = serviceId;
                     }
                 }
-                Console.WriteLine("Servi√ßos carregados com sucesso.");
+                Console.WriteLine("ServiÁos carregados com sucesso.");
             }
             else
             {
-                Console.WriteLine($"Erro: Arquivo {serviceAllocationFilePath} n√£o encontrado.");
+                Console.WriteLine($"Erro: Arquivo {serviceAllocationFilePath} n„o encontrado.");
             }
         }
         catch (Exception ex)
@@ -285,7 +275,7 @@ class Servidor
             }
             else
             {
-                Console.WriteLine($"Erro: Arquivo {serviceFilePath} n√£o encontrado.");
+                Console.WriteLine($"Erro: Arquivo {serviceFilePath} n„o encontrado.");
             }
         }
         catch (Exception ex)
@@ -294,7 +284,7 @@ class Servidor
         }
     }
 
-    public static string AllocateTask(string clientId)
+    private static string AllocateTask(string clientId)
     {
         mutex.WaitOne();
         try
@@ -389,7 +379,17 @@ class Servidor
         }
     }
 
-    public static string MarkTaskAsCompleted(string clientId, string taskDescription)
+    private static void PublishNotification(string message)
+    {
+        var body = Encoding.UTF8.GetBytes(message);
+        rabbitChannel.BasicPublish(exchange: "",
+                                   routingKey: rabbitQueueName,
+                                   basicProperties: null,
+                                   body: body);
+        Console.WriteLine($"Published notification: {message}");
+    }
+
+    private static string MarkTaskAsCompleted(string clientId, string taskDescription)
     {
         try
         {
@@ -428,8 +428,9 @@ class Servidor
         }
     }
 
-    public static string AllocateService(string clientId)
+    private static string AllocateService(string clientId)
     {
+        // Stub for AllocateService implementation
         return "SERVICE_ALLOCATED";
     }
 }
