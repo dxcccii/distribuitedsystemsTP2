@@ -143,7 +143,7 @@ class Servidor
                     serviceId = message.Substring("ADMIN_SERVICE_ID:".Length).Trim();
                     if (!serviceId.StartsWith("Servico_"))
                     {
-                        escritor.WriteLine("400 BAD REQUEST");
+                        escritor.WriteLine("500 BAD REQUEST");
                         Console.WriteLine($"Invalid service ID format: {serviceId}");
                         continue;
                     }
@@ -179,7 +179,7 @@ class Servidor
                     string response = ProcessClientCommand(message, clientId);
                     escritor.WriteLine(response);
                 }
-                else
+                else 
                 {
                     escritor.WriteLine("403 FORBIDDEN");
                 }
@@ -212,7 +212,7 @@ class Servidor
             string[] statusParts = taskStatusInfo.Split(',');
             if (statusParts.Length < 3)
             {
-                return "400 BAD REQUEST";
+                return "500 BAD REQUEST";
             }
 
             string taskDescription = statusParts[0].Trim();
@@ -222,7 +222,7 @@ class Servidor
         }
         else
         {
-            return "400 BAD REQUEST";
+            return "500 BAD REQUEST";
         }
     }
 
@@ -251,7 +251,7 @@ class Servidor
         }
         else
         {
-            return "400 BAD REQUEST";
+            return "500 BAD REQUEST";
         }
     }
 
@@ -295,9 +295,12 @@ class Servidor
     {
         try
         {
+            Console.WriteLine($"Received request - Task: '{taskDescription}', New Status: '{newStatus}', Additional Field: '{additionalField}'");
+
             if (string.IsNullOrEmpty(taskDescription))
             {
-                return "400 BAD REQUEST - Task description cannot be empty";
+                Console.WriteLine("Task description is empty.");
+                return "500 BAD REQUEST - Task description cannot be empty";
             }
 
             string[] lines = File.ReadAllLines(serviceFilePath);
@@ -308,23 +311,26 @@ class Servidor
                 string line = lines[i];
                 string[] parts = line.Split(',');
 
+                Console.WriteLine($"Processing line: {line}");
+
                 if (parts.Length >= 3 && parts[1].Trim() == taskDescription)
                 {
+                    Console.WriteLine("Task found.");
+
                     if (!IsValidStatus(newStatus))
                     {
-                        return "400 BAD REQUEST - Invalid newStatus";
+                        Console.WriteLine("Invalid new status.");
+                        return "500 BAD REQUEST - Invalid newStatus";
                     }
 
                     if (newStatus.ToLower() == "nao alocada")
                     {
                         additionalField = "";
                     }
-                    else if (!string.IsNullOrEmpty(additionalField))
+                    else if (!string.IsNullOrEmpty(additionalField) && !additionalField.StartsWith("Cl_"))
                     {
-                        if (!additionalField.StartsWith("Cl"))
-                        {
-                            return "400 BAD REQUEST - Additional field must start with 'Cl'";
-                        }
+                        Console.WriteLine("Additional field does not start with 'Cl_'.");
+                        return "500 BAD REQUEST - Additional field must start with 'Cl_'";
                     }
 
                     parts[2] = newStatus;
@@ -347,10 +353,12 @@ class Servidor
             if (taskFound)
             {
                 File.WriteAllLines(serviceFilePath, lines);
+                Console.WriteLine("Task status updated successfully.");
                 return "200 OK";
             }
             else
             {
+                Console.WriteLine("Task not found.");
                 return "404 NOT FOUND - Task not found";
             }
         }
@@ -365,6 +373,7 @@ class Servidor
             return "500 INTERNAL SERVER ERROR";
         }
     }
+
 
     private static bool IsValidStatus(string status)
     {
