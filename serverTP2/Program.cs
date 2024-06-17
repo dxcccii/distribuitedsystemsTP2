@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using TaskManager;
 
 class Servidor
 {
