@@ -12,7 +12,7 @@ using TaskManager;
 
 class Servidor
 {
-    public static Dictionary<string, string> serviceDict = new Dictionary<string, string>();
+    public static Dictionary<string, (string ServiceId, string Password)> serviceDict = new Dictionary<string, (string ServiceId, string Password)>();
     public static Dictionary<string, List<string>> taskDict = new Dictionary<string, List<string>>();
     private static Mutex mutex = new Mutex();
     private static IConnection rabbitConnection;
@@ -81,14 +81,15 @@ class Servidor
         try
         {
             var lines = File.ReadAllLines(csvFilePath);
-            foreach (var line in lines)
+            foreach (var line in lines.Skip(1)) // Skip header line
             {
                 var parts = line.Split(',');
-                if (parts.Length >= 2)
+                if (parts.Length >= 3)
                 {
                     string clientId = parts[0].Trim();
                     string serviceId = parts[1].Trim();
-                    serviceDict[clientId] = serviceId;
+                    string password = parts[2].Trim();
+                    serviceDict[clientId] = (serviceId, password);
                 }
             }
         }
@@ -97,7 +98,6 @@ class Servidor
             Console.WriteLine($"Error loading data from CSV file {csvFilePath}: {ex.Message}");
         }
     }
-
 
     private static void HandleClient(object obj)
     {
@@ -125,6 +125,18 @@ class Servidor
                 {
                     clientId = message.Substring("CLIENT_ID:".Length).Trim();
                     escritor.WriteLine($"ID_CONFIRMED:{clientId}");
+                }
+                else if (message.StartsWith("PASSWORD:"))
+                {
+                    string password = message.Substring("PASSWORD:".Length).Trim();
+                    if (serviceDict.ContainsKey(clientId) && serviceDict[clientId].Password == password)
+                    {
+                        escritor.WriteLine("PASSWORD_CONFIRMED");
+                    }
+                    else
+                    {
+                        escritor.WriteLine("403 FORBIDDEN");
+                    }
                 }
                 else if (message.StartsWith("ADMIN_SERVICE_ID:"))
                 {
@@ -188,7 +200,6 @@ class Servidor
         if (message.StartsWith("ADD_TASK:"))
         {
             string taskDescription = message.Substring("ADD_TASK:".Length).Trim();
-
             return AddTask(serviceFilePath, taskDescription);
         }
         else if (message.StartsWith("CONSULT_TASKS"))
@@ -279,6 +290,7 @@ class Servidor
             return "500 Internal Server Error";
         }
     }
+
     private static string ChangeTaskStatus(string serviceFilePath, string taskDescription, string newStatus, string additionalField)
     {
         try
@@ -362,7 +374,6 @@ class Servidor
         return validStatuses.Contains(status);
     }
 
-
     private static void PrintWorkingDirectory()
     {
         string currentDirectory = Directory.GetCurrentDirectory();
@@ -409,9 +420,6 @@ class Servidor
         }
     }
 
-
-
-
     public static string AllocateTask(string clientId)
     {
         mutex.WaitOne();
@@ -422,7 +430,7 @@ class Servidor
                 return "ERROR: Service not found for client";
             }
 
-            string serviceId = serviceDict[clientId];
+            string serviceId = serviceDict[clientId].ServiceId;
             if (taskDict.ContainsKey(serviceId))
             {
                 var unallocatedTask = taskDict[serviceId].FirstOrDefault(task => task.Split(',')[2].Trim().ToLower() == "nao alocada");
@@ -473,10 +481,6 @@ class Servidor
         }
     }
 
-
-
-
-
     public static string MarkTaskAsCompleted(string clientId, string taskDescription)
     {
         mutex.WaitOne();
@@ -487,7 +491,7 @@ class Servidor
                 return "ERROR: Service not found for client";
             }
 
-            string serviceId = serviceDict[clientId];
+            string serviceId = serviceDict[clientId].ServiceId;
             if (taskDict.ContainsKey(serviceId))
             {
                 var taskIndex = taskDict[serviceId].FindIndex(task => task.Split(',')[1].Trim() == taskDescription);
@@ -534,7 +538,6 @@ class Servidor
             mutex.ReleaseMutex();
         }
     }
-
 
     private static void SubscribeToService(string clientId, string serviceId)
     {
