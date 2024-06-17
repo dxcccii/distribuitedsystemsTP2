@@ -209,10 +209,31 @@ class Cliente
                     Console.Write("Insira o campo adicional: ");
                     string additionalField = Console.ReadLine();
 
-                    escritor.WriteLine($"CHANGE_TASK_STATUS:{taskDescription},{newStatus},{additionalField}");
-                    string respostaChangeStatus = leitor.ReadLine();
-                    Console.WriteLine("Resposta do servidor: " + respostaChangeStatus);
-                    Thread.Sleep(1000);
+                    // Basic client-side validation
+                    if (string.IsNullOrWhiteSpace(taskDescription) || string.IsNullOrWhiteSpace(newStatus))
+                    {
+                        Console.WriteLine("Descrição da tarefa e novo status são obrigatórios.");
+                        break;
+                    }
+
+                    try
+                    {
+                        // Send command to server
+                        escritor.WriteLine($"CHANGE_TASK_STATUS:{taskDescription},{newStatus},{additionalField}");
+                        escritor.Flush(); // Ensure data is sent immediately
+
+                        // Read response from the server
+                        string resposta = leitor.ReadLine();
+
+                        // Display server response to the user
+                        Console.WriteLine(resposta);
+                    }
+                    catch (IOException ex)
+                    {
+                        Console.WriteLine($"Erro ao ler resposta do servidor: {ex.Message}");
+                    }
+
+                    Thread.Sleep(1000); // Wait briefly before continuing
                     break;
 
                 case "4":
