@@ -283,7 +283,6 @@ class Servidor
     {
         try
         {
-            // Validate taskDescription
             if (string.IsNullOrEmpty(taskDescription))
             {
                 return "400 BAD REQUEST - Task description cannot be empty";
@@ -297,34 +296,37 @@ class Servidor
                 string line = lines[i];
                 string[] parts = line.Split(',');
 
-                if (parts.Length >= 4 && parts[1].Trim() == taskDescription)
+                if (parts.Length >= 3 && parts[1].Trim() == taskDescription)
                 {
-                    // Validate newStatus
                     if (!IsValidStatus(newStatus))
                     {
                         return "400 BAD REQUEST - Invalid newStatus";
                     }
 
-                    // Validate additionalField if needed
                     if (newStatus.ToLower() == "nao alocada")
                     {
-                        additionalField = ""; // Clear additionalField if status is "nao alocada"
+                        additionalField = "";
                     }
                     else if (!string.IsNullOrEmpty(additionalField))
                     {
-                        // Validate additionalField starts with "Cl"
                         if (!additionalField.StartsWith("Cl"))
                         {
                             return "400 BAD REQUEST - Additional field must start with 'Cl'";
                         }
                     }
 
-                    // Update the line
                     parts[2] = newStatus;
-                    parts[3] = additionalField;
+                    if (parts.Length == 3)
+                    {
+                        line = string.Join(",", parts[0], parts[1], parts[2], additionalField);
+                    }
+                    else
+                    {
+                        parts[3] = additionalField;
+                        line = string.Join(",", parts);
+                    }
 
-                    string updatedLine = string.Join(",", parts);
-                    lines[i] = updatedLine;
+                    lines[i] = line;
                     taskFound = true;
                     break;
                 }
@@ -356,8 +358,8 @@ class Servidor
     {
         // Define your validation rules here
         // For example, if status can only be one of a predefined set:
-        string[] validStatuses = { "nao alocada", "concluido", "em progresso" };
-        return validStatuses.Contains(status.ToLower());
+        string[] validStatuses = { "Nao alocada", "Concluido", "Em curso" };
+        return validStatuses.Contains(status);
     }
 
 
@@ -532,6 +534,7 @@ class Servidor
             mutex.ReleaseMutex();
         }
     }
+
 
     private static void SubscribeToService(string clientId, string serviceId)
     {
