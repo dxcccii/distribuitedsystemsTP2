@@ -9,7 +9,6 @@ class Cliente
     {
         Console.WriteLine("Bem-vindo à ServiMoto!");
 
-        // Prompt for the server's IP address
         Console.Write("Por favor, insira o endereço IP do servidor: ");
         string enderecoServidor = Console.ReadLine();
 
@@ -17,7 +16,6 @@ class Cliente
         {
             while (true)
             {
-                // Connect to the server
                 using (TcpClient cliente = new TcpClient(enderecoServidor, 1234))
                 using (NetworkStream stream = cliente.GetStream())
                 using (StreamReader leitor = new StreamReader(stream))
@@ -25,35 +23,48 @@ class Cliente
                 {
                     Console.WriteLine("Conectado ao servidor. Aguardando resposta...");
 
-                    // Send CONNECT message to initiate communication
                     escritor.WriteLine("CONNECT");
                     string resposta = leitor.ReadLine();
                     Console.WriteLine("Resposta do servidor: " + resposta);
                     Thread.Sleep(1000);
 
-                    // If the connection was successfully established, request and send the client ID and type
                     if (resposta == "100 OK")
                     {
                         Console.Write("Por favor, insira o seu ID de cliente: ");
                         string idCliente = Console.ReadLine();
 
-                        Console.Write("Por favor, insira o seu tipo de cliente (Admin/Cliente): ");
-                        string tipoCliente = Console.ReadLine();
-
-                        // Send the client ID and type to the server
-                        escritor.WriteLine($"CLIENT_ID:{idCliente},{tipoCliente}");
-
-                        // Receive confirmation from the server
+                        escritor.WriteLine($"CLIENT_ID:{idCliente}");
                         resposta = leitor.ReadLine();
                         Console.WriteLine("Resposta: " + resposta);
                         Thread.Sleep(1000);
 
                         if (resposta.StartsWith("ID_CONFIRMED"))
                         {
-                            string clientType = resposta.Split(':')[2].Trim();
-                            if (clientType == "Admin")
+                            if (idCliente.StartsWith("Adm"))
                             {
-                                AdministradorMenu(escritor, leitor, idCliente);
+                                while (true)
+                                {
+                                    Console.Write("Por favor, insira o ID do serviço que você deseja gerenciar (e.g., Servico_A): ");
+                                    string adminServiceId = Console.ReadLine();
+                                    escritor.WriteLine($"ADMIN_SERVICE_ID:{adminServiceId}");
+                                    resposta = leitor.ReadLine();
+                                    Console.WriteLine("Resposta do servidor: " + resposta);
+
+                                    if (resposta.StartsWith("SERVICE_CONFIRMED"))
+                                    {
+                                        AdministradorMenu(escritor, leitor, idCliente, adminServiceId);
+                                        break;
+                                    }
+                                    else if (resposta.StartsWith("SERVICE_NOT_FOUND"))
+                                    {
+                                        Console.WriteLine(resposta);
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine("Resposta do servidor desconhecida: " + resposta);
+                                        break;
+                                    }
+                                }
                             }
                             else
                             {
@@ -150,65 +161,61 @@ class Cliente
         }
     }
 
-    private static void AdministradorMenu(StreamWriter escritor, StreamReader leitor, string idCliente)
+    private static void AdministradorMenu(StreamWriter escritor, StreamReader leitor, string idCliente, string adminServiceId)
     {
         while (true)
         {
             Console.WriteLine("1. Criar nova tarefa");
-            Console.WriteLine("2. Atualizar informação");
-            Console.WriteLine("3. Consultar informação");
-            Console.WriteLine("4. Assinar notificações");
-            Console.WriteLine("5. Cancelar assinatura de notificações");
-            Console.WriteLine("6. Sair");
+            Console.WriteLine("2. Consultar tarefas");
+            Console.WriteLine("3. Alterar status da tarefa");
+            Console.WriteLine("4. Sair");
             Console.Write("Escolha uma opção: ");
             string opcao = Console.ReadLine();
 
-            if (opcao == "1")
+            switch (opcao)
             {
-                Console.Write("Por favor, insira a descrição da nova tarefa: ");
-                string descricaoTarefa = Console.ReadLine();
-                escritor.WriteLine($"CREATE_TASK:{descricaoTarefa} CLIENT_ID:{idCliente}");
-                string resposta = leitor.ReadLine();
-                Console.WriteLine("Resposta do servidor: " + resposta);
-                Thread.Sleep(1000);
-            }
-            else if (opcao == "2")
-            {
-                // Implement update information logic here
-            }
-            else if (opcao == "3")
-            {
-                // Implement query information logic here
-            }
-            else if (opcao == "4")
-            {
-                Console.Write("Por favor, insira o ID do serviço para assinar: ");
-                string serviceId = Console.ReadLine();
-                escritor.WriteLine("SUBSCRIBE:" + serviceId);
-                string resposta = leitor.ReadLine();
-                Console.WriteLine("Resposta do servidor: " + resposta);
-                Thread.Sleep(1000);
-            }
-            else if (opcao == "5")
-            {
-                Console.Write("Por favor, insira o ID do serviço para cancelar a assinatura: ");
-                string serviceId = Console.ReadLine();
-                escritor.WriteLine("UNSUBSCRIBE:" + serviceId);
-                string resposta = leitor.ReadLine();
-                Console.WriteLine("Resposta do servidor: " + resposta);
-                Thread.Sleep(1000);
-            }
-            else if (opcao == "6")
-            {
-                escritor.WriteLine("SAIR");
-                string resposta = leitor.ReadLine();
-                Console.WriteLine("Resposta do servidor: " + resposta);
-                Thread.Sleep(1000);
-                break;
-            }
-            else
-            {
-                Console.WriteLine("Opção inválida. Por favor, tente novamente.");
+                case "1":
+                    Console.Write("Por favor, insira a descrição da nova tarefa: ");
+                    string descricaoTarefa = Console.ReadLine();
+                    escritor.WriteLine($"ADD_TASK:{descricaoTarefa}");
+                    string respostaAddTask = leitor.ReadLine();
+                    Console.WriteLine("Resposta do servidor: " + respostaAddTask);
+                    Thread.Sleep(1000);
+                    break;
+
+                case "2":
+                    escritor.WriteLine("CONSULT_TASKS");
+                    string respostaConsultTasks = leitor.ReadLine();
+                    Console.WriteLine("Resposta do servidor: \n" + respostaConsultTasks);
+                    Thread.Sleep(1000);
+                    break;
+
+                case "3":
+                    Console.Write("Por favor, insira a descrição da tarefa a ser alterada: ");
+                    string taskDescription = Console.ReadLine();
+
+                    Console.Write("Insira o novo status da tarefa: ");
+                    string newStatus = Console.ReadLine();
+
+                    Console.Write("Insira o campo adicional: ");
+                    string additionalField = Console.ReadLine();
+
+                    escritor.WriteLine($"CHANGE_TASK_STATUS:{taskDescription},{newStatus},{additionalField}");
+                    string respostaChangeStatus = leitor.ReadLine();
+                    Console.WriteLine("Resposta do servidor: " + respostaChangeStatus);
+                    Thread.Sleep(1000);
+                    break;
+
+                case "4":
+                    escritor.WriteLine("SAIR");
+                    string respostaSair = leitor.ReadLine();
+                    Console.WriteLine("Resposta do servidor: " + respostaSair);
+                    Thread.Sleep(1000);
+                    return;
+
+                default:
+                    Console.WriteLine("Opção inválida. Por favor, tente novamente.");
+                    break;
             }
         }
     }
