@@ -19,7 +19,21 @@ ________________________________________________________________________________
                              |_/  |  |_/_/   |_|__/\_/|_/ \_/|_|___/_/_|__/  |  |_/
  __________________________________________________________________________________________________________________________
 
-insert better description here
+A Client/Server system with an administrator that can manage a client's tasks given a service ID. 
+
+The interactions between the client and the server create a task assignment system where clients can request tasks from the 
+server, mark tasks as completed, and end the communication when desired. The server is responsible for managing the 
+client's requests and allocating tasks.
+
+The server can handle multiple clients at once by using different threads for each client. This system makes use of shared 
+resources and employs mutexes to ensure that concurrent access to shared resources is properly managed, preventing race 
+conditions and data corruption.
+
+This version comes complete with a system administrator! The admin can select a service, and manage all aspects of it; from
+the tasks within it, to their statuses and allocation.
+
+In this version a client can also subcribe (or unsubscribe) from a service to get notified of when the admin makes any 
+alterations, or adds new tasks. 
  __________________________________________________________________________________________________________________________
                                                        
                                   _  _                                                           
@@ -30,7 +44,12 @@ insert better description here
                                                                                                                                  
 __________________________________________________________________________________________________________________________
 
-insert any quirks the code has here
+Just clone the repository as normal, with visual studio. First run the server, then the client and to observe the changes
+the server maskes to the files Servico_A.csv, Servico_B.csv, Servico_C.csv, or Servico_D.csv, please close the connection 
+with the server first and then open the files in the debug folder through your file explorer, or enter as the administratot
+and select the option to consult a service's tasks. 
+Beware that, while as admin, the confirmation for a taksk's status change is not presented to the client (dont ask me 
+why i don't know, i spent hours debugging and got nowhere), but you can verify it in the server console.
 __________________________________________________________________________________________________________________________                                                                 
                                    __   __   _  _  _|_  __,   __ _|_  ,  
                                   /    /  \_/ |/ |  |  /  |  /    |  / \_
