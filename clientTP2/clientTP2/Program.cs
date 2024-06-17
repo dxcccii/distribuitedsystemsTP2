@@ -230,7 +230,7 @@ class Cliente
                     Console.Write("Insira o campo adicional: ");
                     string additionalField = Console.ReadLine(); // Prompt admin for additional field
 
-                    escritor.WriteLine($"HANGE_TASK_STATUS:{taskDescription},{newStatus},{additionalField}"); // assemble formatted task 
+                    escritor.WriteLine($"CHANGE_TASK_STATUS:{taskDescription},{newStatus},{additionalField}"); // assemble formatted task 
 
                     string respostaChangeStatus = leitor.ReadLine(); // Read server's response
                     Console.WriteLine("Resposta do servidor: " + respostaChangeStatus); // Display server's response
