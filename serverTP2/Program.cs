@@ -533,7 +533,6 @@ class Servidor
         }
     }
 
-
     private static void SubscribeToService(string clientId, string serviceId)
     {
         PublishNotification($"SUBSCRIBED:{clientId}:{serviceId}");
