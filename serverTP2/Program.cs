@@ -31,7 +31,7 @@ class Servidor
         {
             servidor = new TcpListener(IPAddress.Any, 1234);
             servidor.Start();
-            Console.WriteLine("Servidor iniciado. Aguardando conexões...");
+            Console.WriteLine("Servidor iniciado. Aguardando conexÃµes...");
 
             while (true)
             {
@@ -187,8 +187,8 @@ class Servidor
         if (message.StartsWith("ADD_TASK:"))
         {
             string taskDescription = message.Substring("ADD_TASK:".Length).Trim();
-            string taskId = "TASK_" + Guid.NewGuid().ToString().Substring(0, 8);
-            return AddTask(serviceFilePath, taskId, taskDescription);
+
+            return AddTask(serviceFilePath, taskDescription);
         }
         else if (message.StartsWith("CONSULT_TASKS"))
         {
@@ -243,11 +243,11 @@ class Servidor
         }
     }
 
-    private static string AddTask(string serviceFilePath, string taskId, string taskDescription)
+    private static string AddTask(string serviceFilePath, string taskDescription)
     {
         try
         {
-            string newTask = $"{taskId},{taskDescription},nao alocada,";
+            string newTask = $"{taskDescription},nao alocada,";
             File.AppendAllLines(serviceFilePath, new string[] { newTask });
             return "201 CREATED";
         }
@@ -268,6 +268,8 @@ class Servidor
             {
                 response.AppendLine(task);
             }
+            response.AppendLine("<END_OF_RESPONSE>");
+            Console.WriteLine("ConsultTasks response: " + response.ToString());
             return response.ToString();
         }
         catch (Exception ex)
@@ -276,29 +278,49 @@ class Servidor
             return "500 Internal Server Error";
         }
     }
-
     private static string ChangeTaskStatus(string serviceFilePath, string taskDescription, string newStatus, string additionalField)
     {
         try
         {
+            // Validate taskDescription
+            if (string.IsNullOrEmpty(taskDescription))
+            {
+                return "400 BAD REQUEST - Task description cannot be empty";
+            }
+
             string[] lines = File.ReadAllLines(serviceFilePath);
             bool taskFound = false;
+
             for (int i = 0; i < lines.Length; i++)
             {
                 string line = lines[i];
                 string[] parts = line.Split(',');
 
-                if (parts.Length >= 2 && parts[1].Trim() == taskDescription)
+                if (parts.Length >= 3 && parts[1].Trim() == taskDescription)
                 {
+                    // Validate newStatus
+                    if (!IsValidStatus(newStatus))
+                    {
+                        return ("400 BAD REQUEST - Invalid newStatus");
+                    }
+                    // Validate additionalField if needed
+                    if (newStatus.ToLower() == "Nao alocada")
+                    {
+                        additionalField = ""; // Clear additionalField if status is "nao alocada"
+                    }
+                    else if (!string.IsNullOrEmpty(additionalField))
+                    {
+                        // Validate additionalField starts with "Cl"
+                        if (!additionalField.StartsWith("Cl_"))
+                        {
+                            return ("400 BAD REQUEST - Additional field must start with 'Cl_'");
+                        }
+                    }
+
+                    // Update the line
                     parts[2] = newStatus;
-                    if (newStatus.ToLower() == "nao alocada")
-                    {
-                        parts[3] = "";
-                    }
-                    else
-                    {
-                        parts[3] = additionalField;
-                    }
+                    parts[3] = additionalField;
+
                     string updatedLine = string.Join(",", parts);
                     lines[i] = updatedLine;
                     taskFound = true;
@@ -313,8 +335,13 @@ class Servidor
             }
             else
             {
-                return "404 NOT FOUND";
+                return "404 NOT FOUND - Task not found";
             }
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"Error accessing file {serviceFilePath}: {ex.Message}");
+            return "500 INTERNAL SERVER ERROR - IOException";
         }
         catch (Exception ex)
         {
@@ -322,6 +349,15 @@ class Servidor
             return "500 INTERNAL SERVER ERROR";
         }
     }
+
+    private static bool IsValidStatus(string status)
+    {
+        // Define your validation rules here
+        // For example, if status can only be one of a predefined set:
+        string[] validStatuses = { "Nao alocada", "Concluido", "Em curso" };
+        return validStatuses.Contains(status.ToLower());
+    }
+
 
     private static void PrintWorkingDirectory()
     {

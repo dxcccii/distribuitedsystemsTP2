@@ -44,7 +44,7 @@ class Cliente
                             {
                                 while (true)
                                 {
-                                    Console.Write("Por favor, insira o ID do serviço que você deseja gerenciar (e.g., Servico_A): ");
+                                    Console.Write("Por favor, insira o ID do serviço que você deseja gerenciar (e.g., Servico_X): ");
                                     string adminServiceId = Console.ReadLine();
                                     escritor.WriteLine($"ADMIN_SERVICE_ID:{adminServiceId}");
                                     resposta = leitor.ReadLine();
@@ -175,7 +175,7 @@ class Cliente
             switch (opcao)
             {
                 case "1":
-                    Console.Write("Por favor, insira a descrição da nova tarefa: ");
+                    Console.Write("Por favor, insira a descrição da nova tarefa, no formato SX_NUMERO DA TAREFA,DESCRICAO DA TAREFA: ");
                     string descricaoTarefa = Console.ReadLine();
                     escritor.WriteLine($"ADD_TASK:{descricaoTarefa}");
                     string respostaAddTask = leitor.ReadLine();
@@ -183,10 +183,19 @@ class Cliente
                     Thread.Sleep(1000);
                     break;
 
+
                 case "2":
                     escritor.WriteLine("CONSULT_TASKS");
-                    string respostaConsultTasks = leitor.ReadLine();
-                    Console.WriteLine("Resposta do servidor: \n" + respostaConsultTasks);
+                    Console.Write("Lista de tarefas deste servico: \n");
+                    string respostaConsultTasks;
+                    while ((respostaConsultTasks = leitor.ReadLine()) != null)
+                    {
+                        if (respostaConsultTasks == "<END_OF_RESPONSE>")
+                        {
+                            break;
+                        }
+                        Console.WriteLine(respostaConsultTasks);
+                    }
                     Thread.Sleep(1000);
                     break;
 
