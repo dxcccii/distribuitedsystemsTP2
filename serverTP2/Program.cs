@@ -183,7 +183,7 @@ class Servidor
         {
             string newTask = $"{taskDescription},nao alocada,";
             File.AppendAllLines(serviceFilePath, new string[] { newTask });
-            PublishNotification($"/n TASK_ADDED:{serviceId}: {taskDescription}", isAdminChange: true);
+            PublishNotification($"\n TASK_ADDED:{serviceId}: {taskDescription}", isAdminChange: true);
             return "201 CREATED";
         }
         catch (Exception ex)
@@ -263,7 +263,7 @@ class Servidor
             if (taskFound)
             {
                 File.WriteAllLines(serviceFilePath, lines);
-                string notificationMessage = $"/n TASK_STATUS_CHANGED:{serviceId}:{taskDescription}:{newStatus}";
+                string notificationMessage = $"\n TASK_STATUS_CHANGED:{serviceId}:{taskDescription}:{newStatus}";
                 PublishNotification(notificationMessage, isAdminChange: true);
                 Console.WriteLine($"Published notification: {notificationMessage}");
                 return "200 OK";
@@ -450,12 +450,22 @@ class Servidor
 
     private static void PublishNotification(string message, bool isAdminChange)
     {
-        var body = Encoding.UTF8.GetBytes(message);
+        var body = Encoding.UTF8.GetBytes($"\n{message}");
         string exchange = "service_notifications";
         string routingKey = $"NOTIFICATION.{message.Split(':')[1]}"; // Use serviceId as part of the routing key
         rabbitChannel.BasicPublish(exchange: exchange, routingKey: routingKey, basicProperties: null, body: body);
         Console.WriteLine($"Sent notification: {message} with routing key {routingKey}");
     }
+
+    private static void PublishUnsubscribeNotification(string clientId, string serviceId)
+    {
+        var body = Encoding.UTF8.GetBytes($"\nUNSUBSCRIBE:{clientId}:{serviceId}");
+        string exchange = "service_notifications";
+        string routingKey = $"NOTIFICATION.{serviceId}";
+        rabbitChannel.BasicPublish(exchange: exchange, routingKey: routingKey, basicProperties: null, body: body);
+        Console.WriteLine($"Sent unsubscription notification for client {clientId} from service {serviceId}");
+    }
+
 
     public static Dictionary<string, List<string>> subscriptions = new Dictionary<string, List<string>>();
 
