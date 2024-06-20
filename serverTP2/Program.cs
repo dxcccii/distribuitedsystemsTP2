@@ -36,6 +36,7 @@ class Servidor
             try
             {
                 var message = Encoding.UTF8.GetString(body);
+                Console.WriteLine($"Received message: {message}");
                 response = HandleRequest(message);
             }
             catch (Exception ex)
@@ -62,6 +63,8 @@ class Servidor
         rabbitConnection = factory.CreateConnection();
         rabbitChannel = rabbitConnection.CreateModel();
         rabbitChannel.QueueDeclare(queue: rpcQueueName, durable: false, exclusive: false, autoDelete: false, arguments: null);
+        rabbitChannel.ExchangeDeclare(exchange: "service_notifications", type: ExchangeType.Topic); // Ensure exchange declaration
+        Console.WriteLine("RabbitMQ Initialized.");
     }
 
     private static string HandleRequest(string message)
@@ -101,7 +104,7 @@ class Servidor
             }
             else
             {
-                string serviceFilePath = Path.Combine(Directory.GetCurrentDirectory(), $"{serviceId}.csv");
+                string serviceFilePath = Path.Combine(serviceId + ".csv");
                 response = File.Exists(serviceFilePath) ? "SERVICE_CONFIRMED" : "SERVICE_NOT_FOUND";
             }
         }
@@ -115,14 +118,14 @@ class Servidor
             switch (command)
             {
                 case "ADD_TASK":
-                    response = AddTask(Path.Combine(Directory.GetCurrentDirectory(), $"{clientId}.csv"), data);
+                    response = AddTask(clientId, data);
                     break;
                 case "CONSULT_TASKS":
-                    response = ConsultTasks(Path.Combine(Directory.GetCurrentDirectory(), $"{clientId}.csv"));
+                    response = ConsultTasks(clientId);
                     break;
                 case "CHANGE_TASK_STATUS":
                     var statusParts = data.Split(',');
-                    response = ChangeTaskStatus(Path.Combine(Directory.GetCurrentDirectory(), $"{clientId}.csv"), statusParts[0], statusParts[1], statusParts[2]);
+                    response = ChangeTaskStatus(clientId, statusParts[0], statusParts[1], statusParts[2]);
                     break;
                 case "REQUEST_TASK":
                     response = AllocateTask(clientId);
@@ -173,12 +176,14 @@ class Servidor
         }
     }
 
-    private static string AddTask(string serviceFilePath, string taskDescription)
+    private static string AddTask(string serviceId, string taskDescription)
     {
+        string serviceFilePath = serviceId + ".csv";
         try
         {
             string newTask = $"{taskDescription},nao alocada,";
             File.AppendAllLines(serviceFilePath, new string[] { newTask });
+            PublishNotification($"/n TASK_ADDED:{serviceId}: {taskDescription}", isAdminChange: true);
             return "201 CREATED";
         }
         catch (Exception ex)
@@ -190,6 +195,7 @@ class Servidor
 
     private static string ConsultTasks(string serviceFilePath)
     {
+        serviceFilePath = serviceFilePath + ".csv";
         try
         {
             string[] tasks = File.ReadAllLines(serviceFilePath);
@@ -208,8 +214,9 @@ class Servidor
         }
     }
 
-    private static string ChangeTaskStatus(string serviceFilePath, string taskDescription, string newStatus, string additionalField)
+    private static string ChangeTaskStatus(string serviceId, string taskDescription, string newStatus, string additionalField)
     {
+        string serviceFilePath = serviceId + ".csv";
         try
         {
             string[] lines = File.ReadAllLines(serviceFilePath);
@@ -256,6 +263,9 @@ class Servidor
             if (taskFound)
             {
                 File.WriteAllLines(serviceFilePath, lines);
+                string notificationMessage = $"/n TASK_STATUS_CHANGED:{serviceId}:{taskDescription}:{newStatus}";
+                PublishNotification(notificationMessage, isAdminChange: true);
+                Console.WriteLine($"Published notification: {notificationMessage}");
                 return "200 OK";
             }
             else
@@ -263,12 +273,13 @@ class Servidor
                 return "404 NOT FOUND - Task not found";
             }
         }
-        catch (IOException ex)
+        catch (IOException)
         {
             return "500 INTERNAL SERVER ERROR - IOException";
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"Error changing task status: {ex.Message}");
             return "500 INTERNAL SERVER ERROR";
         }
     }
@@ -360,7 +371,7 @@ class Servidor
                     File.WriteAllLines(serviceFilePath, taskDict[serviceId]);
 
                     string message = $"TASK_ALLOCATED:{taskParts[1]}";
-                    PublishNotification(message);
+
                     return message;
                 }
                 else
@@ -413,8 +424,8 @@ class Servidor
                     string serviceFilePath = Path.Combine(Directory.GetCurrentDirectory(), $"{serviceId}.csv");
                     File.WriteAllLines(serviceFilePath, taskDict[serviceId]);
 
-                    string notificationMessage = $"TASK_COMPLETED:{clientId}:{taskDescription}";
-                    PublishNotification(notificationMessage);
+                    string notificationMessage = $"TASK_COMPLETED:{clientId}: {taskDescription}";
+                    PublishNotification(notificationMessage, isAdminChange: false);
                     return $"TASK_MARKED_AS_COMPLETED:{taskDescription}";
                 }
                 else
@@ -427,7 +438,7 @@ class Servidor
                 return $"ERROR_SERVICE_NOT_FOUND:{serviceId}";
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return "500 INTERNAL SERVER ERROR";
         }
@@ -437,21 +448,36 @@ class Servidor
         }
     }
 
+    private static void PublishNotification(string message, bool isAdminChange)
+    {
+        var body = Encoding.UTF8.GetBytes(message);
+        string exchange = "service_notifications";
+        string routingKey = $"NOTIFICATION.{message.Split(':')[1]}"; // Use serviceId as part of the routing key
+        rabbitChannel.BasicPublish(exchange: exchange, routingKey: routingKey, basicProperties: null, body: body);
+        Console.WriteLine($"Sent notification: {message} with routing key {routingKey}");
+    }
+
+    public static Dictionary<string, List<string>> subscriptions = new Dictionary<string, List<string>>();
+
     private static void SubscribeToService(string clientId, string serviceId)
     {
-        PublishNotification($"SUBSCRIBED:{clientId}:{serviceId}");
+        if (!subscriptions.ContainsKey(serviceId))
+        {
+            subscriptions[serviceId] = new List<string>();
+        }
+        if (!subscriptions[serviceId].Contains(clientId))
+        {
+            subscriptions[serviceId].Add(clientId);
+        }
+        Console.WriteLine($"Client {clientId} subscribed to {serviceId}");
     }
 
     private static void UnsubscribeFromService(string clientId, string serviceId)
     {
-        PublishNotification($"UNSUBSCRIBED:{clientId}:{serviceId}");
-    }
-
-    // Add the missing PublishNotification method
-    private static void PublishNotification(string message)
-    {
-        var body = Encoding.UTF8.GetBytes(message);
-        rabbitChannel.BasicPublish(exchange: "", routingKey: "task_notifications", basicProperties: null, body: body);
-        Console.WriteLine($"Sent notification: {message}");
+        if (subscriptions.ContainsKey(serviceId))
+        {
+            subscriptions[serviceId].Remove(clientId);
+        }
+        Console.WriteLine($"Client {clientId} unsubscribed from {serviceId}");
     }
 }
