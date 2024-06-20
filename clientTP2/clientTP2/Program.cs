@@ -20,8 +20,8 @@ class Cliente
     static void Main(string[] args)
     {
         Console.WriteLine("Bem-vindo à ServiMoto!");
-
-        Console.Write("Por favor, insira o endereço IP do servidor RabbitMQ: ");
+        Console.WriteLine($"\n");
+        Console.Write("Por favor, insira o endereço IP do servidor: ");
         string enderecoServidor = Console.ReadLine();
 
         try
@@ -35,14 +35,16 @@ class Cliente
 
             if (response == "100 OK")
             {
-                Console.Write("Por favor, insira o seu ID de cliente: ");
+                Console.WriteLine($"\n");
+                Console.Write("Por favor, insira o seu ID: ");
                 string idCliente = Console.ReadLine();
                 response = Call($"CLIENT_ID:{idCliente}");
                 Console.WriteLine("Resposta: " + response);
 
                 if (response.StartsWith("ID_CONFIRMED"))
                 {
-                    Console.Write("Por favor, insira a sua senha: ");
+                    Console.WriteLine($"\n");
+                    Console.Write("Por favor, insira a sua password: ");
                     string senha = Console.ReadLine();
                     response = Call($"PASSWORD:{idCliente},{senha}");
                     Console.WriteLine("Resposta: " + response);
@@ -56,7 +58,8 @@ class Cliente
                         {
                             while (true)
                             {
-                                Console.Write("Por favor, insira o ID do serviço que você deseja gerenciar (e.g., Servico_X): ");
+                                Console.WriteLine($"\n");
+                                Console.Write("Por favor, insira o ID do serviço que quer gerir (e.g., Servico_X): ");
                                 string adminServiceId = Console.ReadLine();
                                 response = Call($"ADMIN_SERVICE_ID:{adminServiceId}");
                                 Console.WriteLine("Resposta do servidor: " + response);
@@ -148,6 +151,7 @@ class Cliente
     {
         while (true)
         {
+            Console.WriteLine("\n");
             Console.WriteLine("1. Solicitar tarefa");
             Console.WriteLine("2. Marcar tarefa como concluída");
             Console.WriteLine("3. Subscrever a um servico");
@@ -212,6 +216,7 @@ class Cliente
     {
         while (true)
         {
+            Console.WriteLine("\n");
             Console.WriteLine("1. Criar nova tarefa");
             Console.WriteLine("2. Consultar tarefas");
             Console.WriteLine("3. Alterar status da tarefa");
@@ -232,7 +237,7 @@ class Cliente
 
                 case "2":
                     response = Call($"CONSULT_TASKS|{adminServiceId}");
-                    Console.WriteLine($"Tarefas no {adminServiceId}:\n{response}");
+                    Console.WriteLine($"\nTarefas no {adminServiceId}:\n{response}");
                     break;
 
                 case "3":
@@ -291,11 +296,12 @@ class Cliente
             var message = Encoding.UTF8.GetString(body);
             if (!message.StartsWith("UNSUBSCRIBE:"))
             {
-                Console.WriteLine($"Received notification for {serviceId}: {message}");
+                Console.WriteLine($"\n");
+                Console.WriteLine($"\nReceived notification for {serviceId}: {message}");
             }
             else
             {
-                var parts = message.Split(':');
+                var parts = message.Split('-');
                 if (parts.Length == 3 && parts[1] == clientId && parts[2] == serviceId)
                 {
                     notificationChannel.QueueUnbind(queue: queueName, exchange: "service_notifications", routingKey: $"NOTIFICATION.{serviceId}");
@@ -317,5 +323,4 @@ class Cliente
             Console.WriteLine($"Unbound from notifications for service: {serviceId}");
         }
     }
-
 }

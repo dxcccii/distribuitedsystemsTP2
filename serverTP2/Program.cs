@@ -183,7 +183,7 @@ class Servidor
         {
             string newTask = $"{taskDescription},nao alocada,";
             File.AppendAllLines(serviceFilePath, new string[] { newTask });
-            PublishNotification($"\n TASK_ADDED:{serviceId}: {taskDescription}", isAdminChange: true);
+            PublishNotification($"\nTASK_ADDED:{serviceId}: {taskDescription}", isAdminChange: true);
             return "201 CREATED";
         }
         catch (Exception ex)
@@ -204,7 +204,7 @@ class Servidor
             {
                 response.AppendLine(task);
             }
-            response.AppendLine("<END_OF_RESPONSE>");
+            response.AppendLine("END");
             return response.ToString();
         }
         catch (Exception ex)
@@ -263,7 +263,7 @@ class Servidor
             if (taskFound)
             {
                 File.WriteAllLines(serviceFilePath, lines);
-                string notificationMessage = $"\n TASK_STATUS_CHANGED:{serviceId}:{taskDescription}:{newStatus}";
+                string notificationMessage = $"\nTASK_STATUS_CHANGED:{serviceId}:{taskDescription}:{newStatus}";
                 PublishNotification(notificationMessage, isAdminChange: true);
                 Console.WriteLine($"Published notification: {notificationMessage}");
                 return "200 OK";
@@ -450,7 +450,7 @@ class Servidor
 
     private static void PublishNotification(string message, bool isAdminChange)
     {
-        var body = Encoding.UTF8.GetBytes($"\n{message}");
+        var body = Encoding.UTF8.GetBytes($"{message}");
         string exchange = "service_notifications";
         string routingKey = $"NOTIFICATION.{message.Split(':')[1]}"; // Use serviceId as part of the routing key
         rabbitChannel.BasicPublish(exchange: exchange, routingKey: routingKey, basicProperties: null, body: body);
